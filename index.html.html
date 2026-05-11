@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZutatenFlow</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        emerald: { 400: '#34d399', 500: '#10b981', 600: '#059669' },
+        graphite: {
+          900: '#0a0a0b',
+          800: '#111113',
+          750: '#161618',
+          700: '#1c1c1f',
+          600: '#232326',
+          500: '#2a2a2e',
+          400: '#3a3a3f',
+          300: '#52525a',
+          200: '#a1a1aa',
+          100: '#d4d4d8',
+        }
+      },
+      fontFamily: { sans: ['Inter', 'sans-serif'] },
+      boxShadow: {
+        'card': '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
+        'card-hover': '0 8px 24px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
+        'modal': '0 24px 64px rgba(0,0,0,0.7)',
+        'glow': '0 0 20px rgba(16,185,129,0.15)',
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0a0a0b; color: #e4e4e7; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #111113; }
+  ::-webkit-scrollbar-thumb { background: #3a3a3f; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #52525a; }
+  .drag-over { border-color: #10b981 !important; background: rgba(16,185,129,0.05) !important; }
+  [x-cloak] { display: none !important; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #232326; border: 1px solid #3a3a3f; border-radius: 999px; font-size: 12px; color: #d4d4d8; }
+  .chip button { color: #71717a; cursor: pointer; line-height: 1; background: none; border: none; padding: 0; display: flex; }
+  .chip button:hover { color: #ef4444; }
+  input, textarea, select { outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16,185,129,0.1); }
+  .nav-item { transition: all 0.15s ease; }
+  .nav-item.active { color: #10b981; }
+  .nav-item.active .nav-icon { color: #10b981; }
+  .card-img { object-fit: cover; width: 100%; height: 100%; }
+  .fade-in { animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .slide-up { animation: slideUp 0.25s ease; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .drop-zone { border: 2px dashed #3a3a3f; border-radius: 12px; transition: all 0.2s ease; }
+  .drop-zone:hover { border-color: #52525a; }
+  .checked-item { text-decoration: line-through; color: #52525a; }
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area { position: fixed; top: 0; left: 0; width: 100%; background: white; color: black; padding: 40px; }
+    #print-area h1 { color: #059669; }
+  }
+  .tooltip { position: relative; }
+  .tooltip:hover::after { content: attr(data-tip); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #232326; color: #d4d4d8; padding: 4px 8px; border-radius: 6px; font-size: 11px; white-space: nowrap; pointer-events: none; border: 1px solid #3a3a3f; z-index: 100; }
+</style>
+</head>
+<body x-data="app()" x-init="init()" class="min-h-screen bg-graphite-900">
+
+<!-- MOBILE NAV TOP -->
+<header class="sticky top-0 z-40 border-b border-graphite-600 bg-graphite-900/90 backdrop-blur-xl">
+  <div class="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
+    <div class="flex items-center gap-2.5">
+      <div class="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+      </div>
+      <span class="font-semibold text-sm text-graphite-100 tracking-tight">ZutatenFlow</span>
+    </div>
+    <nav class="flex items-center gap-1">
+      <template x-for="tab in tabs" :key="tab.id">
+        <button @click="currentTab = tab.id" :class="['nav-item px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5', currentTab === tab.id ? 'active bg-emerald-500/10 text-emerald-400' : 'text-graphite-200 hover:text-graphite-100 hover:bg-graphite-600']">
+          <span class="nav-icon" x-html="tab.icon"></span>
+          <span class="hidden sm:inline" x-text="tab.label"></span>
+        </button>
+      </template>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+
+  <!-- TAB: GERICHTE -->
+  <div x-show="currentTab === 'dishes'" x-cloak class="fade-in">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-semibold text-graphite-100">Meine Gerichte</h1>
+        <p class="text-xs text-graphite-300 mt-0.5" x-text="`${dishes.length} Gericht${dishes.length !== 1 ? 'e' : ''} gespeichert`"></p>
+      </div>
+      <button @click="openDishModal()" class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium transition-all shadow-glow hover:shadow-none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span class="hidden sm:inline">Neues Gericht</span>
+        <span class="sm:hidden">Neu</span>
+      </button>
+    </div>
+
+    <div x-show="dishes.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-graphite-700 flex items-center justify-center mb-4">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#52525a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+      </div>
+      <p class="text-graphite-200 font-medium mb-1">Noch keine Gerichte</p>
+      <p class="text-graphite-300 text-sm mb-4">Erstelle dein erstes Gericht um zu starten</p>
+      <button @click="openDishModal()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium transition-all">Erstes Gericht erstellen</button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <template x-for="dish in dishes" :key="dish.id">
+        <div class="group relative bg-graphite-700 border border-graphite-500 rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover hover:border-graphite-400 transition-all duration-200 cursor-pointer" @click="openDishModal(dish)">
+          <div class="relative h-40 bg-graphite-600 overflow-hidden">
+            <template x-if="dish.image">
+              <img :src="dish.image" class="card-img group-hover:scale-105 transition-transform duration-300" :alt="dish.name">
+            </template>
+            <template x-if="!dish.image">
+              <div class="w-full h-full flex items-center justify-center">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3a3a3f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+              </div>
+            </template>
+            <div class="absolute inset-0 bg-gradient-to-t from-graphite-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2 gap-1">
+              <button @click.stop="deleteDish(dish.id)" class="w-7 h-7 rounded-lg bg-graphite-900/80 flex items-center justify-center hover:bg-red-500/20 text-graphite-300 hover:text-red-400 transition-colors">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
+            <div class="absolute top-2 left-2 px-2 py-0.5 bg-graphite-900/70 backdrop-blur rounded-lg text-xs text-graphite-200 flex items-center gap-1">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span x-text="`${dish.portions || 1}P`"></span>
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-semibold text-sm text-graphite-100 truncate mb-1" x-text="dish.name"></h3>
+            <p class="text-xs text-graphite-300 line-clamp-2 mb-3 min-h-[2.5rem]" x-text="dish.description || 'Keine Beschreibung'"></p>
+            <div class="flex items-center gap-1 flex-wrap">
+              <template x-for="(ing, i) in (dish.ingredients || []).slice(0, 3)" :key="i">
+                <span class="px-2 py-0.5 bg-graphite-600 rounded-full text-xs text-graphite-300" x-text="ing.name"></span>
+              </template>
+              <template x-if="(dish.ingredients || []).length > 3">
+                <span class="px-2 py-0.5 bg-graphite-600 rounded-full text-xs text-graphite-400" x-text="`+${dish.ingredients.length - 3}`"></span>
+              </template>
+              <template x-if="(dish.ingredients || []).length === 0">
+                <span class="text-xs text-graphite-400">Keine Zutaten</span>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- TAB: WOCHENPLANER -->
+  <div x-show="currentTab === 'planner'" x-cloak class="fade-in">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-semibold text-graphite-100">Wochenplaner</h1>
+        <p class="text-xs text-graphite-300 mt-0.5">Plane deine Mahlzeiten für die Woche</p>
+      </div>
+      <button @click="clearWeekPlan()" class="flex items-center gap-2 px-3 py-1.5 border border-graphite-500 hover:border-graphite-400 text-graphite-300 hover:text-graphite-200 rounded-xl text-xs font-medium transition-all">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        Woche leeren
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+      <template x-for="day in weekDays" :key="day.key">
+        <div class="bg-graphite-700 border border-graphite-500 rounded-2xl p-3 min-h-[180px] flex flex-col drop-zone"
+          @dragover.prevent="$el.classList.add('drag-over')"
+          @dragleave="$el.classList.remove('drag-over')"
+          @drop.prevent="dropDishOnDay(day.key, $event); $el.classList.remove('drag-over')">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold text-graphite-200 uppercase tracking-wider" x-text="day.label"></span>
+            <button @click="openDayPicker(day.key)" class="w-6 h-6 rounded-lg bg-graphite-600 hover:bg-emerald-500/20 hover:text-emerald-400 text-graphite-300 flex items-center justify-center transition-colors">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <div class="flex flex-col gap-2 flex-1">
+            <template x-for="(dishId, idx) in (weekPlan[day.key] || [])" :key="idx">
+              <div class="relative group/item">
+                <template x-if="getDishById(dishId)">
+                  <div class="bg-graphite-600 border border-graphite-500 rounded-xl p-2 hover:border-graphite-400 transition-colors">
+                    <div class="flex items-start gap-2">
+                      <template x-if="getDishById(dishId)?.image">
+                        <img :src="getDishById(dishId)?.image" class="w-8 h-8 rounded-lg object-cover flex-shrink-0">
+                      </template>
+                      <template x-if="!getDishById(dishId)?.image">
+                        <div class="w-8 h-8 rounded-lg bg-graphite-500 flex items-center justify-center flex-shrink-0">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#52525a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/></svg>
+                        </div>
+                      </template>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-xs font-medium text-graphite-100 truncate" x-text="getDishById(dishId)?.name"></p>
+                        <p class="text-[10px] text-graphite-400" x-text="`${getDishById(dishId)?.ingredients?.length || 0} Zutaten`"></p>
+                      </div>
+                      <button @click="removeDishFromDay(day.key, idx)" class="opacity-0 group-hover/item:opacity-100 w-5 h-5 rounded flex items-center justify-center text-graphite-400 hover:text-red-400 transition-all">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <template x-if="(weekPlan[day.key] || []).length === 0">
+              <div class="flex-1 flex items-center justify-center">
+                <p class="text-[10px] text-graphite-400 text-center">Gericht ziehen<br>oder hinzufügen</p>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div class="mt-6">
+      <p class="text-xs text-graphite-300 mb-3 font-medium">Gerichte zum Ziehen:</p>
+      <div class="flex flex-wrap gap-2">
+        <template x-for="dish in dishes" :key="dish.id">
+          <div class="flex items-center gap-2 px-3 py-1.5 bg-graphite-700 border border-graphite-500 rounded-xl text-xs text-graphite-200 cursor-grab hover:border-graphite-400 hover:text-graphite-100 transition-all"
+            draggable="true"
+            @dragstart="dragDishId = dish.id">
+            <template x-if="dish.image">
+              <img :src="dish.image" class="w-5 h-5 rounded object-cover">
+            </template>
+            <span x-text="dish.name"></span>
+          </div>
+        </template>
+        <template x-if="dishes.length === 0">
+          <p class="text-xs text-graphite-400">Noch keine Gerichte erstellt.</p>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: EINKAUFSLISTE -->
+  <div x-show="currentTab === 'shopping'" x-cloak class="fade-in">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-semibold text-graphite-100">Einkaufsliste</h1>
+        <p class="text-xs text-graphite-300 mt-0.5">Generiert aus deinen Gerichten</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button @click="printShoppingList()" class="flex items-center gap-2 px-3 py-1.5 border border-graphite-500 hover:border-graphite-400 text-graphite-300 hover:text-graphite-200 rounded-xl text-xs font-medium transition-all">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          PDF
+        </button>
+        <button @click="generateFromWeekPlan()" class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium transition-all shadow-glow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span class="hidden sm:inline">Aus Wochenplan</span>
+          <span class="sm:hidden">Generieren</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="mb-6 bg-graphite-700 border border-graphite-500 rounded-2xl p-4">
+      <p class="text-xs font-medium text-graphite-200 mb-3">Gerichte manuell auswählen:</p>
+      <div class="flex flex-wrap gap-2 mb-3">
+        <template x-for="dish in dishes" :key="dish.id">
+          <button @click="toggleDishForShopping(dish.id)"
+            :class="['flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border', selectedDishesForShopping.includes(dish.id) ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-graphite-600 border-graphite-500 text-graphite-300 hover:border-graphite-400 hover:text-graphite-200']">
+            <template x-if="selectedDishesForShopping.includes(dish.id)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </template>
+            <span x-text="dish.name"></span>
+          </button>
+        </template>
+      </div>
+      <button @click="generateFromSelected()" :disabled="selectedDishesForShopping.length === 0" class="px-4 py-2 bg-graphite-600 hover:bg-graphite-500 disabled:opacity-40 disabled:cursor-not-allowed text-graphite-200 hover:text-graphite-100 rounded-xl text-xs font-medium transition-all">
+        Ausgewählte hinzufügen
+      </button>
+    </div>
+
+    <div x-show="shoppingList.length > 0" class="slide-up">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs font-medium text-graphite-300" x-text="`${shoppingList.filter(i=>!i.checked).length} von ${shoppingList.length} übrig`"></p>
+        <button @click="shoppingList = []" class="text-xs text-graphite-400 hover:text-red-400 transition-colors">Liste leeren</button>
+      </div>
+
+      <div class="space-y-4">
+        <template x-for="unit in getShoppingUnits()" :key="unit">
+          <div class="bg-graphite-700 border border-graphite-500 rounded-2xl overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-graphite-600">
+              <span class="text-[10px] font-semibold text-graphite-400 uppercase tracking-wider" x-text="unit || 'Sonstiges'"></span>
+            </div>
+            <div class="divide-y divide-graphite-600">
+              <template x-for="(item, idx) in shoppingList.filter(i => i.unit === unit)" :key="idx">
+                <div class="flex items-center gap-3 px-4 py-3 hover:bg-graphite-600/50 transition-colors group/row">
+                  <button @click="item.checked = !item.checked" :class="['w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-all', item.checked ? 'bg-emerald-500 border-emerald-500' : 'border-graphite-400 hover:border-emerald-500']">
+                    <template x-if="item.checked">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </template>
+                  </button>
+                  <div class="flex-1 flex items-center justify-between gap-2">
+                    <span :class="['text-sm transition-all', item.checked ? 'checked-item' : 'text-graphite-100']" x-text="item.name"></span>
+                    <span :class="['text-xs font-medium flex-shrink-0', item.checked ? 'text-graphite-500' : 'text-emerald-400']" x-text="`${item.amount} ${item.unit}`"></span>
+                  </div>
+                  <button @click="shoppingList.splice(shoppingList.indexOf(item), 1)" class="opacity-0 group-hover/row:opacity-100 w-5 h-5 flex items-center justify-center text-graphite-400 hover:text-red-400 transition-all">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div x-show="shoppingList.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-graphite-700 flex items-center justify-center mb-4">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#52525a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      </div>
+      <p class="text-graphite-200 font-medium mb-1">Einkaufsliste ist leer</p>
+      <p class="text-graphite-300 text-sm">Generiere eine Liste aus deinem Wochenplan</p>
+    </div>
+
+    <div id="print-area" class="hidden print:block">
+      <h1 style="font-size:24px;font-weight:700;margin-bottom:8px;">ZutatenFlow – Einkaufsliste</h1>
+      <p style="color:#666;font-size:12px;margin-bottom:24px;" x-text="`Erstellt am ${new Date().toLocaleDateString('de-DE')}`"></p>
+      <template x-for="unit in getShoppingUnits()" :key="unit">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:11px;font-weight:600;color:#059669;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;" x-text="unit || 'Sonstiges'"></div>
+          <template x-for="item in shoppingList.filter(i => i.unit === unit)" :key="item.name">
+            <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid #f3f4f6;">
+              <span x-text="item.name"></span>
+              <span style="font-weight:600;" x-text="`${item.amount} ${item.unit}`"></span>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- TAB: EINSTELLUNGEN -->
+  <div x-show="currentTab === 'settings'" x-cloak class="fade-in max-w-lg">
+    <h1 class="text-xl font-semibold text-graphite-100 mb-6">Einstellungen</h1>
+    <div class="space-y-3">
+      <div class="bg-graphite-700 border border-graphite-500 rounded-2xl p-5">
+        <h3 class="text-sm font-semibold text-graphite-100 mb-1">Daten</h3>
+        <p class="text-xs text-graphite-300 mb-4">Alle Daten werden lokal in deinem Browser gespeichert.</p>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between py-2 border-b border-graphite-600">
+            <span class="text-sm text-graphite-200">Gerichte</span>
+            <span class="text-xs text-emerald-400 font-medium" x-text="`${dishes.length} gespeichert`"></span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-graphite-600">
+            <span class="text-sm text-graphite-200">Wochenplan</span>
+            <span class="text-xs text-emerald-400 font-medium" x-text="`${Object.values(weekPlan).flat().length} Einträge`"></span>
+          </div>
+          <div class="flex items-center justify-between py-2">
+            <span class="text-sm text-graphite-200">Einkaufsliste</span>
+            <span class="text-xs text-emerald-400 font-medium" x-text="`${shoppingList.length} Artikel`"></span>
+          </div>
+        </div>
+      </div>
+      <div class="bg-graphite-700 border border-red-500/20 rounded-2xl p-5">
+        <h3 class="text-sm font-semibold text-red-400 mb-1">Gefahrenzone</h3>
+        <p class="text-xs text-graphite-300 mb-4">Diese Aktionen können nicht rückgängig gemacht werden.</p>
+        <button @click="clearAllData()" class="w-full py-2.5 border border-red-500/40 hover:border-red-500 hover:bg-red-500/10 text-red-400 rounded-xl text-sm font-medium transition-all">
+          Alle Daten löschen
+        </button>
+      </div>
+      <div class="bg-graphite-700 border border-graphite-500 rounded-2xl p-5">
+        <h3 class="text-sm font-semibold text-graphite-100 mb-1">Über ZutatenFlow</h3>
+        <p class="text-xs text-graphite-300">Version 1.0.0 · Keine Registrierung · 100% offline</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- DISH MODAL -->
+<div x-show="showDishModal" x-cloak class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="closeDishModal()"></div>
+  <div class="relative bg-graphite-700 border border-graphite-500 rounded-t-3xl sm:rounded-2xl shadow-modal w-full sm:max-w-2xl max-h-[95vh] overflow-y-auto slide-up">
+    <div class="sticky top-0 bg-graphite-700 border-b border-graphite-600 px-6 py-4 flex items-center justify-between z-10 rounded-t-3xl sm:rounded-t-2xl">
+      <h2 class="text-base font-semibold text-graphite-100" x-text="editingDish ? 'Gericht bearbeiten' : 'Neues Gericht'"></h2>
+      <button @click="closeDishModal()" class="w-8 h-8 rounded-xl bg-graphite-600 hover:bg-graphite-500 flex items-center justify-center text-graphite-300 hover:text-graphite-100 transition-all">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="p-6 space-y-5">
+      <div>
+        <label class="block text-xs font-medium text-graphite-300 mb-2">Bild</label>
+        <div class="drop-zone relative h-40 flex flex-col items-center justify-center cursor-pointer hover:border-graphite-400 transition-all overflow-hidden rounded-xl"
+          @click="$refs.imageInput.click()"
+          @dragover.prevent="$el.classList.add('drag-over')"
+          @dragleave="$el.classList.remove('drag-over')"
+          @drop.prevent="handleImageDrop($event); $el.classList.remove('drag-over')">
+          <template x-if="dishForm.image">
+            <div class="absolute inset-0">
+              <img :src="dishForm.image" class="w-full h-full object-cover">
+              <div class="absolute inset-0 bg-graphite-900/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                <span class="text-xs text-white font-medium">Bild ändern</span>
+              </div>
+            </div>
+          </template>
+          <template x-if="!dishForm.image">
+            <div class="flex flex-col items-center gap-2 text-graphite-400">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span class="text-xs">Klicken oder Bild reinziehen</span>
+              <span class="text-[10px] text-graphite-500">JPG, PNG, WEBP</span>
+            </div>
+          </template>
+          <input x-ref="imageInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload($event)">
+        </div>
+        <template x-if="dishForm.image">
+          <button @click="dishForm.image = ''" class="mt-1 text-xs text-red-400 hover:text-red-300 transition-colors">Bild entfernen</button>
+        </template>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-graphite-300 mb-2">Name *</label>
+        <input type="text" x-model="dishForm.name" placeholder="z.B. Spaghetti Bolognese" class="w-full bg-graphite-600 border border-graphite-500 rounded-xl px-4 py-3 text-sm text-graphite-100 placeholder-graphite-400 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-graphite-300 mb-2">Beschreibung</label>
+        <textarea x-model="dishForm.description" placeholder="Kurze Beschreibung des Gerichts..." rows="2" class="w-full bg-graphite-600 border border-graphite-500 rounded-xl px-4 py-3 text-sm text-graphite-100 placeholder-graphite-400 transition-all resize-none"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-graphite-300 mb-2">Portionen</label>
+        <div class="flex items-center gap-3">
+          <button @click="dishForm.portions = Math.max(1, dishForm.portions - 1)" class="w-8 h-8 rounded-xl bg-graphite-600 border border-graphite-500 flex items-center justify-center text-graphite-300 hover:text-graphite-100 hover:border-graphite-400 transition-all">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <span class="text-sm font-semibold text-graphite-100 w-8 text-center" x-text="dishForm.portions"></span>
+          <button @click="dishForm.portions++" class="w-8 h-8 rounded-xl bg-graphite-600 border border-graphite-500 flex items-center justify-center text-graphite-300 hover:text-graphite-100 hover:border-graphite-400 transition-all">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <span class="text-xs text-graphite-400">Personen</span>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-graphite-300 mb-2">Zutaten</label>
+        <div class="flex flex-wrap gap-2 mb-3" x-show="dishForm.ingredients.length > 0">
+          <template x-for="(ing, idx) in dishForm.ingredients" :key="idx">
+            <span class="chip">
+              <span x-text="`${ing.amount} ${ing.unit} ${ing.name}`"></span>
+              <button @click="dishForm.ingredients.splice(idx, 1)" type="button">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </span>
+          </template>
+        </div>
+        <div class="bg-graphite-600 border border-graphite-500 rounded-xl p-3">
+          <div class="grid grid-cols-12 gap-2 mb-2">
+            <input type="text" x-model="newIngredient.name" placeholder="Zutat" @keydown.enter="addIngredient()" class="col-span-5 bg-graphite-700 border border-graphite-500 rounded-lg px-3 py-2 text-xs text-graphite-100 placeholder-graphite-400 transition-all">
+            <input type="number" x-model="newIngredient.amount" placeholder="Menge" min="0" step="0.1" @keydown.enter="addIngredient()" class="col-span-3 bg-graphite-700 border border-graphite-500 rounded-lg px-3 py-2 text-xs text-graphite-100 placeholder-graphite-400 transition-all">
+            <select x-model="newIngredient.unit" class="col-span-4 bg-graphite-700 border border-graphite-500 rounded-lg px-2 py-2 text-xs text-graphite-100 transition-all appearance-none cursor-pointer">
+              <template x-for="u in units" :key="u">
+                <option :value="u" x-text="u"></option>
+              </template>
+            </select>
+          </div>
+          <button @click="addIngredient()" class="w-full py-2 bg-graphite-500 hover:bg-graphite-400 text-graphite-200 hover:text-graphite-100 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Zutat hinzufügen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sticky bottom-0 bg-graphite-700 border-t border-graphite-600 px-6 py-4 flex gap-3">
+      <button @click="closeDishModal()" class="flex-1 py-2.5 border border-graphite-500 hover:border-graphite-400 text-graphite-300 hover:text-graphite-200 rounded-xl text-sm font-medium transition-all">
+        Abbrechen
+      </button>
+      <button @click="saveDish()" :disabled="!dishForm.name.trim()" class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-all shadow-glow">
+        <span x-text="editingDish ? 'Speichern' : 'Erstellen'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- DAY PICKER MODAL -->
+<div x-show="showDayPicker" x-cloak class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="showDayPicker = false"></div>
+  <div class="relative bg-graphite-700 border border-graphite-500 rounded-t-3xl sm:rounded-2xl shadow-modal w-full sm:max-w-sm max-h-[80vh] overflow-y-auto slide-up">
+    <div class="sticky top-0 bg-graphite-700 border-b border-graphite-600 px-5 py-4 flex items-center justify-between rounded-t-3xl sm:rounded-t-2xl">
+      <h3 class="text-sm font-semibold text-graphite-100" x-text="`Gericht für ${weekDays.find(d=>d.key===selectedDay)?.label}`"></h3>
+      <button @click="showDayPicker = false" class="w-7 h-7 rounded-lg bg-graphite-600 flex items-center justify-center text-graphite-300 hover:text-graphite-100">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="p-3">
+      <template x-for="dish in dishes" :key="dish.id">
+        <button @click="addDishToDay(selectedDay, dish.id); showDayPicker = false" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-graphite-600 transition-colors text-left">
+          <template x-if="dish.image">
+            <img :src="dish.image" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">
+          </template>
+          <template x-if="!dish.image">
+            <div class="w-10 h-10 rounded-lg bg-graphite-600 flex items-center justify-center flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#52525a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/></svg>
+            </div>
+          </template>
+          <div>
+            <p class="text-sm font-medium text-graphite-100" x-text="dish.name"></p>
+            <p class="text-xs text-graphite-400" x-text="`${dish.ingredients?.length || 0} Zutaten · ${dish.portions || 1} Portionen`"></p>
+          </div>
+        </button>
+      </template>
+      <template x-if="dishes.length === 0">
+        <p class="text-center text-sm text-graphite-400 py-8">Keine Gerichte vorhanden.<br>Erstelle zuerst ein Gericht.</p>
+      </template>
+    </div>
+  </div>
+</div>
+
+<script>
+function app() {
+  return {
+    currentTab: 'dishes',
+    tabs: [
+      { id: 'dishes', label: 'Gerichte', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>' },
+      { id: 'planner', label: 'Wochenplan', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
+      { id: 'shopping', label: 'Einkauf', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>' },
+      { id: 'settings', label: 'Einstellungen', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
+    ],
+    weekDays: [
+      { key: 'mon', label: 'Mo' },
+      { key: 'tue', label: 'Di' },
+      { key: 'wed', label: 'Mi' },
+      { key: 'thu', label: 'Do' },
+      { key: 'fri', label: 'Fr' },
+      { key: 'sat', label: 'Sa' },
+      { key: 'sun', label: 'So' },
+    ],
+    units: ['g', 'kg', 'ml', 'l', 'Stk.', 'TL', 'EL', 'Prise', 'Bund', 'Packung', 'Dose', 'Glas', 'Zehe', 'Scheibe', 'Handvoll'],
+    dishes: [],
+    weekPlan: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] },
+    shoppingList: [],
+    selectedDishesForShopping: [],
+    showDishModal: false,
+    showDayPicker: false,
+    selectedDay: null,
+    editingDish: null,
+    dragDishId: null,
+    dishForm: { name: '', description: '', portions: 2, image: '', ingredients: [] },
+    newIngredient: { name: '', amount: '', unit: 'g' },
+
+    init() {
+      this.load();
+      this.$watch('dishes', () => this.save());
+      this.$watch('weekPlan', () => this.save());
+      this.$watch('shoppingList', () => this.save());
+    },
+
+    load() {
+      try {
+        const d = localStorage.getItem('zf_dishes');
+        const w = localStorage.getItem('zf_weekplan');
+        const s = localStorage.getItem('zf_shopping');
+        if (d) this.dishes = JSON.parse(d);
+        if (w) this.weekPlan = { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], ...JSON.parse(w) };
+        if (s) this.shoppingList = JSON.parse(s);
+      } catch(e) { console.error('Load error', e); }
+    },
+
+    save() {
+      localStorage.setItem('zf_dishes', JSON.stringify(this.dishes));
+      localStorage.setItem('zf_weekplan', JSON.stringify(this.weekPlan));
+      localStorage.setItem('zf_shopping', JSON.stringify(this.shoppingList));
+    },
+
+    openDishModal(dish = null) {
+      if (dish) {
+        this.editingDish = dish;
+        this.dishForm = JSON.parse(JSON.stringify(dish));
+      } else {
+        this.editingDish = null;
+        this.dishForm = { name: '', description: '', portions: 2, image: '', ingredients: [] };
+      }
+      this.newIngredient = { name: '', amount: '', unit: 'g' };
+      this.showDishModal = true;
+    },
+
+    closeDishModal() {
+      this.showDishModal = false;
+      this.editingDish = null;
+    },
+
+    saveDish() {
+      if (!this.dishForm.name.trim()) return;
+      if (this.editingDish) {
+        const idx = this.dishes.findIndex(d => d.id === this.editingDish.id);
+        if (idx !== -1) this.dishes[idx] = { ...this.dishForm, id: this.editingDish.id };
+        this.dishes = [...this.dishes];
+      } else {
+        this.dishes.push({ ...this.dishForm, id: Date.now().toString() });
+      }
+      this.closeDishModal();
+    },
+
+    deleteDish(id) {
+      if (!confirm('Gericht wirklich löschen?')) return;
+      this.dishes = this.dishes.filter(d => d.id !== id);
+      for (const day of Object.keys(this.weekPlan)) {
+        this.weekPlan[day] = this.weekPlan[day].filter(did => did !== id);
+      }
+      this.weekPlan = { ...this.weekPlan };
+    },
+
+    addIngredient() {
+      if (!this.newIngredient.name.trim()) return;
+      this.dishForm.ingredients.push({ ...this.newIngredient });
+      this.newIngredient = { name: '', amount: '', unit: 'g' };
+    },
+
+    handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => { this.dishForm.image = e.target.result; };
+      reader.readAsDataURL(file);
+    },
+
+    handleImageDrop(event) {
+      const file = event.dataTransfer.files[0];
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (e) => { this.dishForm.image = e.target.result; };
+      reader.readAsDataURL(file);
+    },
+
+    getDishById(id) {
+      return this.dishes.find(d => d.id === id) || null;
+    },
+
+    openDayPicker(dayKey) {
+      this.selectedDay = dayKey;
+      this.showDayPicker = true;
+    },
+
+    addDishToDay(dayKey, dishId) {
+      if (!this.weekPlan[dayKey]) this.weekPlan[dayKey] = [];
+      this.weekPlan[dayKey] = [...this.weekPlan[dayKey], dishId];
+      this.weekPlan = { ...this.weekPlan };
+    },
+
+    removeDishFromDay(dayKey, idx) {
+      const arr = [...(this.weekPlan[dayKey] || [])];
+      arr.splice(idx, 1);
+      this.weekPlan[dayKey] = arr;
+      this.weekPlan = { ...this.weekPlan };
+    },
+
+    dropDishOnDay(dayKey, event) {
+      const dishId = event.dataTransfer.getData('text/plain') || this.dragDishId;
+      if (dishId) this.addDishToDay(dayKey, dishId);
+      this.dragDishId = null;
+    },
+
+    clearWeekPlan() {
+      if (!confirm('Wochenplan wirklich leeren?')) return;
+      this.weekPlan = { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] };
+    },
+
+    generateFromWeekPlan() {
+      const allDishIds = Object.values(this.weekPlan).flat();
+      const allDishes = allDishIds.map(id => this.getDishById(id)).filter(Boolean);
+      this.buildShoppingList(allDishes);
+      this.currentTab = 'shopping';
+    },
+
+    toggleDishForShopping(id) {
+      const idx = this.selectedDishesForShopping.indexOf(id);
+      if (idx === -1) this.selectedDishesForShopping.push(id);
+      else this.selectedDishesForShopping.splice(idx, 1);
+    },
+
+    generateFromSelected() {
+      const dishes = this.selectedDishesForShopping.map(id => this.getDishById(id)).filter(Boolean);
+      this.buildShoppingList(dishes);
+      this.selectedDishesForShopping = [];
+    },
+
+    buildShoppingList(dishes) {
+      const map = {};
+      for (const dish of dishes) {
+        for (const ing of (dish.ingredients || [])) {
+          const key = `${ing.name.toLowerCase().trim()}__${ing.unit}`;
+          if (map[key]) {
+            const existingAmount = parseFloat(map[key].amount) || 0;
+            const newAmount = parseFloat(ing.amount) || 0;
+            map[key].amount = (existingAmount + newAmount).toString();
+          } else {
+            map[key] = { name: ing.name.trim(), amount: ing.amount, unit: ing.unit, checked: false };
+          }
+        }
+      }
+      const newItems = Object.values(map);
+      for (const item of newItems) {
+        const existing = this.shoppingList.find(i => i.name.toLowerCase() === item.name.toLowerCase() && i.unit === item.unit);
+        if (existing) {
+          existing.amount = ((parseFloat(existing.amount) || 0) + (parseFloat(item.amount) || 0)).toString();
+        } else {
+          this.shoppingList.push(item);
+        }
+      }
+      this.shoppingList = [...this.shoppingList];
+    },
+
+    getShoppingUnits() {
+      const units = [...new Set(this.shoppingList.map(i => i.unit))];
+      return units.sort();
+    },
+
+    printShoppingList() {
+      const el = document.getElementById('print-area');
+      el.classList.remove('hidden');
+      window.print();
+      el.classList.add('hidden');
+    },
+
+    clearAllData() {
+      if (!confirm('Wirklich ALLE Daten löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+      this.dishes = [];
+      this.weekPlan = { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] };
+      this.shoppingList = [];
+      localStorage.removeItem('zf_dishes');
+      localStorage.removeItem('zf_weekplan');
+      localStorage.removeItem('zf_shopping');
+    },
+  }
+}
+</script>
+
+<!--
+=================================================
+  GITHUB PAGES DEPLOYMENT
+=================================================
+  1. Erstelle ein neues GitHub Repository (z.B. "zutatenflow")
+  2. Lade diese HTML-Datei als "index.html" hoch
+  3. Gehe zu: Repository → Settings → Pages
+  4. Unter "Source": Branch "main" / Ordner "/ (root)" wählen
+  5. Klicke "Save"
+  6. Nach ~1–2 Minuten ist die App live unter:
+     https://DEIN-USERNAME.github.io/zutatenflow/
+
+  Tipp: Einfach per Drag & Drop in github.com hochladen.
+  Kein Build-Prozess nötig - alles läuft direkt im Browser!
+=================================================
+-->
+</body>
+</html>
