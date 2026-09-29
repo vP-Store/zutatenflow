@@ -2,11 +2,19 @@ name: Windows-Installer bauen
 
 on:
   push:
+    branches: ['**']
+    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Als Release veröffentlichen'
+        type: boolean
+        default: false
 
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 40
     permissions:
       contents: write
     steps:
@@ -19,21 +27,62 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run check
+      - name: Syntax prüfen
+        run: npm run check
+
+      - name: Unit-Tests
+        run: npm test
 
       - name: Installer erstellen
         run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
+      - name: Build-Ergebnis anzeigen
+        shell: pwsh
+        run: |
+          Get-ChildItem dist | Format-Table Name, Length
+          Get-Content dist/latest.yml
+
+      - name: Ende-zu-Ende-Test auf Windows
+        run: npm run e2e
+        env:
+          COCKPIT_EXE: dist\win-unpacked\Cockpit.exe
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Testergebnisse
+          path: test-results/
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v4
         with:
           name: Cockpit-Installer
-          path: dist/*.exe
+          path: dist/Cockpit-Setup.exe
           if-no-files-found: error
 
+      - name: Version lesen
+        id: version
+        shell: pwsh
+        run: echo "version=$((Get-Content package.json | ConvertFrom-Json).version)" >> $env:GITHUB_OUTPUT
+
       - name: Release veröffentlichen
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || contains(github.event.head_commit.message, '[release]') || inputs.release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.exe
+          tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Cockpit ${{ steps.version.outputs.version }}
+          make_latest: true
+          fail_on_unmatched_files: true
+          body: |
+            **Download:** `Cockpit-Setup.exe` unten bei „Assets“ herunterladen und starten.
+
+            Windows warnt eventuell („Der Computer wurde durch Windows geschützt“), weil das Programm nicht signiert ist → **Weitere Informationen** → **Trotzdem ausführen**.
+
+            Bereits installierte Versionen aktualisieren sich automatisch.
+          files: |
+            dist/Cockpit-Setup.exe
+            dist/Cockpit-Setup.exe.blockmap
+            dist/latest.yml

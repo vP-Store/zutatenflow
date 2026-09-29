@@ -1,20 +1,31 @@
 {
   "name": "cockpit",
   "productName": "Cockpit",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Eigene Startoberfläche für Windows: Apps, Dateien und Internet an einem Ort.",
-  "main": "src/main.js",
+  "main": "src/main/main.js",
   "author": "vP-Store",
   "license": "UNLICENSED",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vP-Store/zutatenflow.git"
+  },
   "scripts": {
     "start": "electron .",
-    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer/app.js && node --check src/renderer/mock-api.js",
+    "check": "node scripts/check.js",
+    "test": "node --test test/unit.test.js",
+    "e2e": "node test/e2e.js",
     "dist": "electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9",
+    "koffi": "3.3.2"
   },
   "devDependencies": {
     "electron": "44.5.0",
-    "electron-builder": "26.15.3"
+    "electron-builder": "26.15.3",
+    "playwright-core": "1.63.0"
   },
   "build": {
     "appId": "de.vpstore.cockpit",
@@ -39,7 +50,18 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Cockpit",
-      "artifactName": "Cockpit-Setup-${version}.exe"
-    }
+      "artifactName": "Cockpit-Setup.exe",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "asar": false,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "vP-Store",
+        "repo": "zutatenflow",
+        "releaseType": "release"
+      }
+    ]
   }
 }

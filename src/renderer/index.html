@@ -1,13 +1,15 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file: https:; media-src file:; frame-src file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cockpit</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="wallpaper" aria-hidden="true"></div>
+
   <div class="app">
     <header class="topbar">
       <div class="win-menu">
@@ -17,7 +19,7 @@
           <span class="chev" aria-hidden="true">▾</span>
         </button>
         <div id="win-menu" class="dropdown" role="menu" hidden>
-          <button data-action="hide" role="menuitem"><span class="di" data-icon="windows"></span>Zu Windows wechseln <kbd id="kbd-toggle">Strg + Alt + D</kbd></button>
+          <button data-action="hide" role="menuitem"><span class="di" data-icon="windows"></span>Zu Windows wechseln <kbd>Strg + Alt + D</kbd></button>
           <button data-action="explorer" role="menuitem"><span class="di" data-icon="folder"></span>Windows-Explorer öffnen</button>
           <button data-action="taskmgr" role="menuitem"><span class="di" data-icon="chart"></span>Task-Manager</button>
           <hr>
@@ -27,15 +29,18 @@
           <button data-action="restart" role="menuitem"><span class="di" data-icon="restart"></span>Neu starten</button>
           <button data-action="shutdown" role="menuitem"><span class="di" data-icon="power"></span>Herunterfahren</button>
           <hr>
-          <button data-action="quit" role="menuitem" class="danger"><span class="di" data-icon="close"></span>Cockpit beenden <kbd id="kbd-quit">Strg + Alt + Q</kbd></button>
+          <button data-action="quit" role="menuitem" class="danger"><span class="di" data-icon="close"></span>Cockpit beenden <kbd>Strg + Alt + Q</kbd></button>
         </div>
       </div>
 
       <div class="search-wrap">
         <svg class="search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Apps, Dateien oder im Internet suchen …">
+        <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Apps, Dateien, Einstellungen suchen oder rechnen …" aria-label="Suchen">
+        <kbd class="search-kbd">Strg K</kbd>
         <div id="search-results" class="search-results" hidden></div>
       </div>
+
+      <button id="update-badge" class="update-badge" hidden title="Update bereit – klicken zum Installieren"><span data-icon="update"></span>Update</button>
 
       <div class="clock" id="clock">
         <span class="time">--:--</span>
@@ -43,21 +48,43 @@
       </div>
     </header>
 
-    <nav class="sidebar" id="sidebar">
-      <button data-view="home" class="active"><span class="ni" data-icon="home"></span><span>Start</span></button>
-      <button data-view="apps"><span class="ni" data-icon="apps"></span><span>Apps</span></button>
-      <button data-view="files"><span class="ni" data-icon="folder"></span><span>Dateien</span></button>
-      <button data-view="web"><span class="ni" data-icon="globe"></span><span>Internet</span></button>
+    <nav class="sidebar" id="sidebar" aria-label="Bereiche">
+      <button data-view="home" class="active" title="Start (Alt+1)"><span class="ni" data-icon="home"></span><span>Start</span></button>
+      <button data-view="apps" title="Apps (Alt+2)"><span class="ni" data-icon="apps"></span><span>Apps</span></button>
+      <button data-view="files" title="Dateien (Alt+3)"><span class="ni" data-icon="folder"></span><span>Dateien</span></button>
+      <button data-view="web" title="Internet (Alt+4)"><span class="ni" data-icon="globe"></span><span>Internet</span></button>
       <div class="spacer"></div>
-      <button data-view="settings"><span class="ni" data-icon="gear"></span><span>Einstellungen</span></button>
+      <button data-view="settings" title="Einstellungen (Alt+5)"><span class="ni" data-icon="gear"></span><span>Einstellungen</span></button>
     </nav>
 
     <main id="view" class="view" tabindex="-1"></main>
+
+    <footer class="dock" id="dock" aria-label="Offene Fenster">
+      <button class="dock-btn" id="dock-home" title="Start"></button>
+      <button class="dock-btn" id="dock-search" title="Suchen (Strg+K)"></button>
+      <span class="dock-sep"></span>
+      <div class="dock-windows" id="dock-windows"></div>
+      <div class="dock-status">
+        <button class="dock-btn" id="dock-net"></button>
+        <button class="dock-btn" id="dock-sound" title="Sound-Einstellungen"></button>
+        <button class="dock-bat" id="dock-bat" hidden></button>
+      </div>
+    </footer>
   </div>
 
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="mock-api.js"></script>
-  <script src="app.js"></script>
+  <script src="js/calc.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/dock.js"></script>
+  <script src="js/views/home.js"></script>
+  <script src="js/views/apps.js"></script>
+  <script src="js/views/files.js"></script>
+  <script src="js/views/web.js"></script>
+  <script src="js/views/settings.js"></script>
+  <script src="js/onboarding.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
