@@ -157,6 +157,11 @@
     C.closeCtx();
   });
 
+  // Auf das Fenster gezogene Dateien nicht im Fenster öffnen
+  ['dragover', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => {
+    if (!e.target.closest('#fav-grid')) e.preventDefault();
+  }));
+
   // ---------------------------------------------------------------- Tastatur
 
   document.addEventListener('keydown', (e) => {

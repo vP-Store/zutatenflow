@@ -133,7 +133,13 @@
     }
   }
 
-  async function onClick(e) {
+  function onClick(e) {
+    const handled = e.target.closest('[data-toggle], [data-theme-set], [data-accent], [data-wp], [data-rmroot], [data-sact]');
+    if (handled) handleClick(e);
+    return !!handled;
+  }
+
+  async function handleClick(e) {
     const t = e.target.closest('[data-toggle]');
     if (t) {
       const key = t.dataset.toggle;

@@ -97,8 +97,10 @@ function createWindow() {
     if (/^https?:/i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
+  // Die Oberfläche darf nie woandershin navigieren (z. B. wenn eine Datei auf das Fenster gezogen wird)
   win.webContents.on('will-navigate', (e, url) => {
-    if (!url.startsWith('file:')) { e.preventDefault(); if (/^https?:/i.test(url)) shell.openExternal(url); }
+    e.preventDefault();
+    if (/^https?:/i.test(url)) shell.openExternal(url);
   });
 
   // Absturzschutz: Oberfläche neu laden, statt einen schwarzen Bildschirm zu zeigen
