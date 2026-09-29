@@ -1,0 +1,45 @@
+{
+  "name": "cockpit",
+  "productName": "Cockpit",
+  "version": "0.1.0",
+  "description": "Eigene Startoberfläche für Windows: Apps, Dateien und Internet an einem Ort.",
+  "main": "src/main.js",
+  "author": "vP-Store",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/renderer/app.js && node --check src/renderer/mock-api.js",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.5.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "de.vpstore.cockpit",
+    "productName": "Cockpit",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cockpit",
+      "artifactName": "Cockpit-Setup-${version}.exe"
+    }
+  }
+}
